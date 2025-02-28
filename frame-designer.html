@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Frame Designer</title>
+    <style>
+        body { text-align: center; font-family: Arial, sans-serif; }
+        canvas { border: 2px solid black; background-color: #ffffff; cursor: grab; }
+        .toolbar { margin-top: 10px; }
+        button, select { margin: 5px; padding: 8px; }
+    </style>
+</head>
+<body>
+    <h1>Design Your Own Glasses</h1>
+    <canvas id="frameCanvas" width="600" height="400"></canvas>
+    <div class="toolbar">
+        <label>Frame Shape:</label>
+        <select id="frameShape">
+            <option value="round">Round</option>
+            <option value="square">Square</option>
+            <option value="cat-eye">Cat-Eye</option>
+        </select>
+        <label>Frame Color:</label>
+        <input type="color" id="frameColor" value="#000000">
+        <button onclick="downloadDesign()">Download Design</button>
+    </div>
+
+    <script>
+        window.onload = function() { 
+            const canvas = document.getElementById("frameCanvas");
+            const ctx = canvas.getContext("2d");
+            const frameShape = document.getElementById("frameShape");
+            const frameColor = document.getElementById("frameColor");
+
+            let controlPoints = [
+                { x: 150, y: 120 }, { x: 250, y: 80 }, { x: 350, y: 120 },
+                { x: 140, y: 220 }, { x: 360, y: 220 },
+                { x: 190, y: 180 }, { x: 310, y: 180 },
+                { x: 250, y: 150 }
+            ];
+            let draggingPoint = null;
+
+            function mirrorPoints(index) {
+                if (index < 3) {
+                    const mirroredIndex = 2 - index;
+                    controlPoints[mirroredIndex].x = canvas.width - controlPoints[index].x;
+                }
+            }
+
+            function drawFrame() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw Lenses First
+                ctx.fillStyle = "rgba(255, 255, 255, 0.8)"; 
+                ctx.strokeStyle = "black";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(controlPoints[6].x, controlPoints[6].y, 40, 0, Math.PI * 2);
+                ctx.arc(controlPoints[5].x, controlPoints[5].y, 40, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Draw Bridge
+                ctx.beginPath();
+                ctx.moveTo(controlPoints[5].x, controlPoints[5].y);
+                ctx.lineTo(controlPoints[7].x, controlPoints[7].y);
+                ctx.lineTo(controlPoints[6].x, controlPoints[6].y);
+                ctx.stroke();
+                
+                // Draw Frame Over Lenses
+                ctx.fillStyle = frameColor.value;
+                ctx.strokeStyle = "black";
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(controlPoints[0].x, controlPoints[0].y);
+                ctx.quadraticCurveTo(controlPoints[1].x, controlPoints[1].y, controlPoints[2].x, controlPoints[2].y);
+                ctx.lineTo(controlPoints[4].x, controlPoints[4].y);
+                ctx.quadraticCurveTo(controlPoints[3].x, controlPoints[3].y, controlPoints[0].x, controlPoints[0].y);
+                ctx.fill();
+                ctx.stroke();
+            }
+
+            function findClosestPoint(x, y) {
+                return controlPoints.reduce((closest, point, index) => {
+                    const dist = Math.hypot(point.x - x, point.y - y);
+                    return dist < closest.dist ? { index, dist } : closest;
+                }, { index: -1, dist: Infinity });
+            }
+
+            canvas.addEventListener("mousedown", (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                const closest = findClosestPoint(mouseX, mouseY);
+                if (closest.dist < 15) draggingPoint = closest.index;
+            });
+
+            canvas.addEventListener("mousemove", (e) => {
+                if (draggingPoint !== null) {
+                    const rect = canvas.getBoundingClientRect();
+                    controlPoints[draggingPoint].x = e.clientX - rect.left;
+                    controlPoints[draggingPoint].y = e.clientY - rect.top;
+                    mirrorPoints(draggingPoint);
+                    drawFrame();
+                }
+            });
+
+            canvas.addEventListener("mouseup", () => draggingPoint = null);
+
+            function downloadDesign() {
+                const link = document.createElement('a');
+                link.download = 'custom_glasses.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            }
+
+            frameShape.addEventListener("change", drawFrame);
+            frameColor.addEventListener("input", drawFrame);
+            drawFrame();
+        };
+    </script>
+</body>
+</html>
